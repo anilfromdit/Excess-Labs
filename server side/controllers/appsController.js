@@ -3,8 +3,9 @@ const ErrorHandler = require("../utils/errorHandler");
 const handleAsync = require("../middleware/catchAsyncError");
 const userApps = require('../models/userAppsModel')
 const mongoose = require("mongoose");
-const crypto = require('crypto');
 const successResponse = require("../utils/successResponse");
+const { createCollection } = require("../utils/createCollection");
+const { generateApiKey } = require("../utils/generateApiKey");
 
 exports.myApps = handleAsync(async (req, res, next) => {
     console.log(req.user._id)
@@ -36,38 +37,5 @@ exports.createApp = handleAsync(async (req, res, next) => {
     return successResponse(res, 201, `Created New App`, userApp)
 })
 
-exports.addCollection = handleAsync(async (req, res, next) => {
-    const { apiKey, collectionName, schema } = req.body;
-    if (!(apiKey && collectionName))
-        return next(new ErrorHandler(`Api Key and Collection Name required`, 400));
 
-    const userApp = await userApps.findOne({ APIKey: apiKey }).populate({
-        path: 'owner',
-        select: 'name'
-    });
-    if (!userApp || userApp.owner.id !== req.user.id)
-        return next(new ErrorHandler("Unauthorized or Invalid API Key", 401));
 
-    await createCollection(apiKey, userApp.name, collectionName, schema,next);
-    return successResponse(res, 201, `New Collection Created`)
-})
-
-function generateApiKey(email) {
-    const timestamp = Date.now().toString();
-    const data = email + timestamp;
-    const apiKey = crypto.createHash('sha256').update(data).digest('hex');
-    return apiKey;
-}
-
-async function createCollection(apiKey, appName, collectionName, schema) {
-    const newCollection = `${apiKey}_${appName}_${collectionName}`;
-
-    const collections = await mongoose.connection.db.listCollections().toArray();
-    console.log(collections)
-    if (collections.some((c) => c.name.toLowerCase() === newCollection.toLowerCase())) {
-        throw new ErrorHandler("Collection already exists", 400)
-      }
-
-    const Collection = schema ? mongoose.model(newCollection, new mongoose.Schema(schema)) : mongoose.model(newCollection, new mongoose.Schema({}));
-    await Collection.create({});
-}
