@@ -1,0 +1,19 @@
+{
+  "name": "excesslabs",
+  "version": "1.0.0",
+  "description": "A Baas Project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anilfromdit/Excess-Labs.git"
+  },
+  "author": "Anil Gulati",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anilfromdit/Excess-Labs/issues"
+  },
+  "homepage": "https://github.com/anilfromdit/Excess-Labs#readme"
+}
