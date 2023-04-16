@@ -19,7 +19,7 @@ exports.createApp = handleAsync(async (req, res, next) => {
         throw new Error(`Project with name ${ name } already exists.Please choose a different name for your new project.`);
     }
     const apiKey = generateApiKey(req.user._id);
-    await createCollection(apiKey, name, 'default', null);
+    await createCollection(apiKey, name, 'USERS', null);
     const userApp = await userApps.create({
         name,
         description,
