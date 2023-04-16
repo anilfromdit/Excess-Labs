@@ -24,5 +24,9 @@ const userApps = new mongoose.Schema({
         default: Date.now(),
     },
 });
+userApps.statics.apiKeyExists = async function (apiKey) {
+    const app = await this.findOne({ APIKey: apiKey });
+    return !!app;
+};
 
 module.exports = mongoose.model("UserApps", userApps);
