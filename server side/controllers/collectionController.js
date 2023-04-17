@@ -53,14 +53,10 @@ exports.insertDataInCollection = handleAsync(async (req, res, next) => {
         const Collection = mongoose.models[newCollection] || mongoose.model(newCollection, schema);
 
         await Collection.insertMany(data);
+        successResponse(res, 200, `Data inserted successfully in ${newCollection.replace(`${apiKey}_${appName}_`, '')} collection`, data)
 
-        res.status(200).json({
-            success: true,
-            message: `Data inserted successfully in ${newCollection.replace(`${apiKey}_${appName}_`, '')} collection`,
-            data: data,
-        });
     } catch (error) {
-        next(error);
+        return next(new ErrorHandler(`${error.message}`, 400));
     }
 });
 
@@ -84,16 +80,15 @@ exports.getDataFromCollection = handleAsync(async (req, res, next) => {
             .limit(parseInt(limit))
             .exec();
 
-        res.status(200).json({
-            success: true,
-            data,
-        });
+      
+        res.status(200).send({ success: true, success: true, data });
+
     } catch (error) {
         console.log(error)
         if (error.name === 'MissingSchemaError') {
             return next(new ErrorHandler("Collection not found", 404));
         }
-        next(error);
+        return next(new ErrorHandler(error.message, 400));
     }
 });
 
@@ -119,7 +114,8 @@ exports.deleteRecordFromCollection = handleAsync(async (req, res, next) => {
         return next(new ErrorHandler("Record not found", 404));
     }
 
-    res.status(200).send({ success: true, message: `Deleted Record Id: ${recordId}` });
+    successResponse(res, 200, `Deleted Record Id: ${recordId}`)
+
 });
 
 

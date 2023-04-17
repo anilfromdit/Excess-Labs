@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/anilfromdit/Excess-Labs/issues"
   },
-  "homepage": "https://github.com/anilfromdit/Excess-Labs#readme"
+  "homepage": "https://github.com/anilfromdit/Excess-Labs#readme",
+  "dependencies": {
+    "validator": "^13.9.0"
+  }
 }
