@@ -1,15 +1,15 @@
 
 
 const mongoose = require('mongoose');
-const User = require('../models/User');
-const UserApp = require('../models/UserApp');
+const UserApp = require('../models/userAppsModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const ErrorHandler = require("../utils/errorHandler");
 
-exports.registerUser = async (req, res) => {
+exports.registerUser = async (req, res, next) => {
     const { apiKey, appName } = req.params;
 
-    const app = await UserApp.findOne({ apiKey, name: appName });
+    const app = await UserApp.findOne({ APIKey: apiKey, name: appName });
 
     if (!app) {
         return next(new ErrorHandler("Invalid API key", 400));
@@ -29,49 +29,69 @@ exports.registerUser = async (req, res) => {
         other,
     } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, apiKey);
+    if (!password) {
+        return next(new ErrorHandler("Password is required", 400));
+    }
 
-    const user = new User({
-        name,
-        email,
-        username,
-        phoneNumber,
-        dob,
-        gender,
-        imageUrl,
-        coverUrl,
-        password: hashedPassword,
-        useForLogin,
-        other,
-        app: app._id,
-    });
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Save the user object in the `${apiKey}_${appName}_USERS` collection
-    const collectionName = `${apiKey}_${appName}_USERS`;
-    const UserCollection = mongoose.model(collectionName, User);
-    const savedUser = await UserCollection.create(user);
+    const newCollection = `${apiKey}_${appName}_users`;
 
-    // Generate a JWT token
-    const token = jwt.sign(
-        {
-            _id: savedUser._id,
-            name: savedUser.name,
-            email: savedUser.email,
-            username: savedUser.username,
-            phoneNumber: savedUser.phoneNumber,
-            useForLogin: savedUser.useForLogin,
-            app: savedUser.app,
-        },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRES_IN }
-    );
+    const schema = new mongoose.Schema({}, { strict: false });
 
-    res.status(201).json({ success: true, message: 'User registered successfully.', token });
+    try {
+        const Collection = mongoose.models[newCollection] || mongoose.model(newCollection, schema);
+
+        const user = new Collection({
+            name,
+            email,
+            username,
+            phoneNumber,
+            dob,
+            gender,
+            imageUrl,
+            coverUrl,
+            password: hashedPassword,
+            useForLogin,
+            other,
+            app: app._id,
+        });
+        const savedUser = await user.save();
+
+        const token = jwt.sign(
+            {
+                _id: savedUser._id,
+                name: savedUser.name,
+                email: savedUser.email,
+                username: savedUser.username,
+                phoneNumber: savedUser.phoneNumber,
+                useForLogin: savedUser.useForLogin,
+                app: savedUser.app,
+            },
+            process.env.USERS_JWT_SECRET,
+            { expiresIn: process.env.USERS_JWT_EXPIRE }
+        );
+
+        res.status(201).json({
+            success: true,
+            message: "User registered successfully.",
+            user: savedUser,
+            token,
+        });
+    } catch (error) {
+        console.log(error)
+        if (error.name === "MissingSchemaError") {
+            return next(new ErrorHandler("Collection not found", 404));
+        }
+        next(error);
+    }
 };
+
 
 exports.loginUser = async (req, res) => {
     const { apiKey, appName } = req.params;
-
+    console.log(apiKey)
+    console.log(appName)
     // Find the app based on the apiKey and appName
     const app = await UserApp.findOne({ APIKey: apiKey, name: appName });
 
@@ -81,20 +101,25 @@ exports.loginUser = async (req, res) => {
 
     // Extract the login data from the request body
     const { loginValue, password } = req.body;
+    const schema = new mongoose.Schema({}, { strict: false });
 
+    const collectionName = `${apiKey}_${appName}_users`
     // Check if the user exists in the collection
-    const user = await db.collection(`${apiKey}_${appName}_USERS`).findOne({
+    const Collection = mongoose.models[collectionName] || mongoose.model(collectionName, schema);
+
+    const user = await Collection.findOne({
         $or: [
-            { email: loginValue, useForLogin: 'email' },
-            { username: loginValue, useForLogin: 'username' },
-            { phoneNumber: loginValue, useForLogin: 'phoneNumber' },
+            { email: loginValue },
+            { username: loginValue},
+            { phoneNumber: loginValue },
             { useForLogin: loginValue }
         ]
     });
-
+    console.log(user)
     if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid login credentials.' });
     }
+
 
     // Check if the password matches
     const passwordMatch = await bcrypt.compare(password, user.password);
@@ -112,20 +137,21 @@ exports.loginUser = async (req, res) => {
             phoneNumber: user.phoneNumber,
             username: user.username
         },
-        process.env.JWT_SECRET,
+        process.env.USERS_JWT_SECRET,
         {
-            expiresIn: process.env.JWT_EXPIRES_IN
+            expiresIn: process.env.USERS_JWT_EXPIRE
         }
     );
 
-    res.status(200).json({ success: true, token });
+    res.status(200).json({ success: true, token,user });
 };
+
 
 exports.updateUser = async (req, res) => {
     const { apiKey, appName, userId } = req.params;
 
     // Find the app based on the apiKey and appName
-    const app = await UserApp.findOne({apiKey, name: appName });
+    const app = await UserApp.findOne({ apiKey, name: appName });
 
     if (!app) {
         return res.status(404).json({ success: false, message: 'App not found.' });
@@ -154,8 +180,8 @@ exports.updateUser = async (req, res) => {
     } = req.body;
 
     // Perform validation on each field
-    
-        user.name = name;
+
+    user.name = name;
     if (email) {
         if (!validator.isEmail(email)) {
             return res.status(400).json({ success: false, message: 'Invalid email address.' });
@@ -163,35 +189,35 @@ exports.updateUser = async (req, res) => {
         user.email = email;
     }
 
-        user.username = username;
-    
-        if (!validator.isMobilePhone(phoneNumber, 'any')) {
-            return res.status(400).json({ success: false, message: 'Invalid phone number.' });
-        }
-        user.phoneNumber = phoneNumber;
-    
+    user.username = username;
 
-        user.dob = dob;
-    
+    if (!validator.isMobilePhone(phoneNumber, 'any')) {
+        return res.status(400).json({ success: false, message: 'Invalid phone number.' });
+    }
+    user.phoneNumber = phoneNumber;
 
-        user.gender = gender;
-    
 
-        user.imageUrl = imageUrl;
-    
+    user.dob = dob;
 
-        user.coverUrl = coverUrl;
-    
+
+    user.gender = gender;
+
+
+    user.imageUrl = imageUrl;
+
+
+    user.coverUrl = coverUrl;
+
 
     if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
         user.password = hashedPassword;
     }
 
-        user.useForLogin = useForLogin;
-    
-        user.other = other;
-    
+    user.useForLogin = useForLogin;
+
+    user.other = other;
+
 
     // Save the updated user record
     await user.save();

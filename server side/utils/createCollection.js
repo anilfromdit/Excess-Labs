@@ -7,7 +7,7 @@ async function createCollection(apiKey, appName, collectionName, schema, check) 
     const collections = await mongoose.connection.db.listCollections().toArray();
     // console.log(collections)
     if (collections.some((c) => c.name.toLowerCase() === newCollection.toLowerCase())) {
-      if (check) return;
+      if (check==true) return;
       throw new ErrorHandler("Collection already exists", 400)
     }
   
