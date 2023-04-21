@@ -62,7 +62,7 @@ exports.insertDataInCollection = handleAsync(async (req, res, next) => {
 
 exports.getDataFromCollection = handleAsync(async (req, res, next) => {
     const { apiKey, appName, collectionName } = req.params;
-    if (reservedKeywords.includes(collection.trim().toLowerCase())) {
+    if (reservedKeywords.includes(collectionName.trim().toLowerCase())) {
         return next(new ErrorHandler("You're not authorized to access this protected data", 403));
     }
     const { page, limit } = req.query;
@@ -72,7 +72,11 @@ exports.getDataFromCollection = handleAsync(async (req, res, next) => {
 
     try {
         // Create a Mongoose model for the collection
-        const Collection = mongoose.model(newCollection);
+        // const Collection = mongoose.model(newCollection);
+        
+        const schema = new mongoose.Schema({}, { strict: false });
+
+        const Collection = mongoose.models[newCollection] || mongoose.model(newCollection, schema);
 
         // Use the model to execute the `find` method
         const data = await Collection.find()
@@ -116,6 +120,57 @@ exports.deleteRecordFromCollection = handleAsync(async (req, res, next) => {
 
     successResponse(res, 200, `Deleted Record Id: ${recordId}`)
 
+});
+
+exports.searchInCollection = handleAsync(async (req, res, next) => {
+  const { apiKey, appName, collectionName } = req.params;
+  if (reservedKeywords.includes(collectionName.trim().toLowerCase())) {
+    return next(new ErrorHandler("You're not authorized to access this protected data", 403));
+  }
+
+  const { page, limit } = req.query;
+  const searchParams = req.body.searchParams;
+
+  const newCollection = `${apiKey}_${appName}_${collectionName}`;
+
+  try {
+    // Create a Mongoose model for the collection
+    const schema = new mongoose.Schema({}, { strict: false });
+    const Collection = mongoose.models[newCollection] || mongoose.model(newCollection, schema);
+
+    // Build search query
+    const searchQuery = {};
+    for (const key in searchParams) {
+      if (key === "in-range") {
+        const [fieldName, range] = searchParams[key].split(":");
+        const [start, end] = range.split("-");
+        searchQuery[fieldName] = { $gte: parseInt(start), $lte: parseInt(end) };
+      } else {
+        switch (key) {
+          case "in":
+            searchQuery[searchParams[key]["key"]] = { $in: searchParams[key]["value"] };
+            break;
+          case "range":
+            searchQuery[searchParams[key]["key"]] = { $gte: searchParams[key]["value"][0], $lte: searchParams[key]["value"][1] };
+            break;
+          default:
+            searchQuery[key] = { $regex: new RegExp(searchParams[key], "i") };
+        }
+      }
+    }
+
+    // Use the model to execute the `find` method
+    console.log(searchQuery)
+    const data = await Collection.find(searchQuery);
+
+    res.status(200).send({ success: true, data });
+  } catch (error) {
+    console.log(error);
+    if (error.name === "MissingSchemaError") {
+      return next(new ErrorHandler("Collection not found", 404));
+    }
+    return next(new ErrorHandler(error.message, 400));
+  }
 });
 
 
