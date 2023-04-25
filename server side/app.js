@@ -7,6 +7,9 @@ const bodyParser = require("body-parser");
 const indexRouter = require('./routes/index');
 const os = require('os');
 const {connectDatabase} = require("./config/database");
+var cors = require('cors')
+ 
+app.use(cors())
 app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));

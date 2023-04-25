@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/anilfromdit/Excess-Labs#readme",
   "dependencies": {
+    "cors": "^2.8.5",
     "validator": "^13.9.0"
   }
 }
