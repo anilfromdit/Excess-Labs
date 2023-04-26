@@ -7,7 +7,7 @@ const sendEmail = require("../utils/sendEmail");
 exports.registerUser = handleAsync(async (req, res, next) => {
 
     const { name, email, password, contactNumber } = req.body;
-console.log(req.body)
+    console.log(req.body)
     const user = await User.create({
         name,
         email,
@@ -61,11 +61,23 @@ exports.loginUser = handleAsync(async (req, res, next) => {
 
 exports.logoutUser = handleAsync(async (req, res, next) => {
     res.cookie("token", null, {
-      expires: new Date(Date.now()),
-      httpOnly: true,
+        expires: new Date(Date.now()),
+        httpOnly: true,
     });
     res.status(200).json({
-      success: true,
-      message: "Logged out",
+        success: true,
+        message: "Logged out",
     });
-  });
+});
+
+exports.getUserProfile = handleAsync(async (req, res, next) => {
+
+    if (!req.user) {
+        return next(new ErrorHandler("User not found", 404));
+    }
+
+    res.status(200).json({
+        success: true,
+        user: req.user
+    });
+});
