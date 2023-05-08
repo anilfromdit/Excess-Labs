@@ -14,21 +14,21 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// app.use((req, res, next) => {
-//     console.log('Incoming Request:');
-//     console.log(`Method: ${req.method}`);
-//     console.log(`Endpoint: ${req.url}`);
-//     console.log(`Payload: ${JSON.stringify(req.body)}`);
+app.use((req, res, next) => {
+    console.log('Incoming Request:');
+    console.log(`Method: ${req.method}`);
+    console.log(`Endpoint: ${req.url}`);
+    console.log(`Payload: ${JSON.stringify(req.body)}`);
     
-//     res.on('finish', () => {
-//       console.log('Outgoing Response:');
-//       console.log(`Status Code: ${res.statusCode}`);
-//       // console.log(`Payload: ${JSON.stringify(res.data)}`);
-//     //   console.log(res)
-//     });
+    res.on('finish', () => {
+      console.log('Outgoing Response:');
+      console.log(`Status Code: ${res.statusCode}`);
+      // console.log(`Payload: ${JSON.stringify(res.data)}`);
+    //   console.log(res)
+    });
     
-//     next();
-//   });
+    next();
+  });
 
 app.use("/api/v1", indexRouter);
 
